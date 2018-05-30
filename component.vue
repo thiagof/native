@@ -342,7 +342,9 @@
        * Reset the value of all elements of the parent form.
        */
       reset () {
-        this.data.__data = Object.assign({}, this.default.__data)
+        Object.keys(this.default).forEach((keyName) => {
+          this.data[keyName] = this.default[keyName]
+        })
       },
 
       /**
