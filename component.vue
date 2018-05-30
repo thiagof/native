@@ -1,5 +1,6 @@
 <script>
-  import { loadFields } from './lib/parser'
+  import _ from 'lodash'
+  import { loadFields, initObjectAttribute } from './lib/parser'
 
   const option = { native: true }
   const components = {
@@ -69,8 +70,15 @@
     created () {
       loadFields(this, JSON.parse(JSON.stringify(this.schema)))
 
-      this.default = { ...this.value }
-      this.data = { ...this.value }
+      // adds getter/setter to model in order to support nested dot notation
+      this.fields.forEach((field) => {
+        const fieldName = field.name
+        initObjectAttribute(this.data, fieldName)
+        initObjectAttribute(this.default, fieldName)
+
+        this.data[fieldName] = _.get(this.value, fieldName) || field.value
+        this.default[fieldName] = _.clone(this.data[fieldName])
+      })
     },
     render (createElement) {
       const nodes = []
@@ -102,7 +110,7 @@
 
         this.fields.forEach((field) => {
           if (!field.value) {
-            field.value = this.value[field.name]
+            field.value = _.get(this.value, field.name)
           }
 
           const element = field.hasOwnProperty('items') && field.type !== 'select'
@@ -116,13 +124,13 @@
           const input = {
             ref: field.name,
             domProps: {
-              value: this.value[field.name]
+              value: _.get(this.value, field.name)
             },
             on: {
               input: (event) => {
                 const value = event && event.target ? event.target.value : event
 
-                this.$set(this.data, field.name, value)
+                _.set(this.data, field.name, value)
 
                 /**
                  * Fired synchronously when the value of an element is changed.
@@ -139,7 +147,7 @@
           switch (field.type) {
             case 'textarea':
               if (element.option.native) {
-                input.domProps.innerHTML = this.value[field.name]
+                input.domProps.innerHTML = _.get(this.value, field.name)
               }
               break
 
@@ -334,9 +342,7 @@
        * Reset the value of all elements of the parent form.
        */
       reset () {
-        for (let key in this.default) {
-          this.$set(this.data, key, this.default[key])
-        }
+        this.data.__data = Object.assign({}, this.default.__data)
       },
 
       /**
